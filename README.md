@@ -1,16 +1,27 @@
-# Autonomous Company — Clean Starter Template
+# Autonomous Company — Portable Foundation Template
 
-This repository is a **public, zero-tenant foundation** for starting an AI-operated company. It is not a clone of the private COS implementation and does not contain its internal history, deployments, provider bindings or credentials.
+A **public, clean-room starter** for establishing a persistent AI-operated company. No internal COS/IAA reasoning history, deployment records, provider bindings or credentials are included.
 
-## Start
-1. Use **Use this template** (or create a new private repository and copy this starter's files).
-2. Read [FIRST_AGENT.md](FIRST_AGENT.md) with your first agent.
-3. Create the Jira project and configure it using [company/JIRA_SETUP_GUIDE.md](company/JIRA_SETUP_GUIDE.md). Jira operations are manual until independently verified.
-4. Record real, verified environment bindings in your own private environment, not in this public template.
-5. Work from Git-native [Gemara](gemara/README.md), with reviewable commits and pull requests.
+## Installation in a new company
+1. Click **Use this template** and create your own repository (prefer private until configured).
+2. Read [FIRST_AGENT.md](FIRST_AGENT.md) and launch the First Agent using [its launcher](prompt-system/launchers/FIRST_AGENT.md).
+3. The First Agent guides the owner through [manual Jira provisioning](company/JIRA_SETUP_GUIDE.md) and verifies real project/field/workflow state.
+4. In **Actions → Bootstrap Git Gemara → Run workflow**, run from `main`. The workflow creates an independent `gemara` branch, preserving its history on future runs.
+5. **Before claiming protected:** configure the `gemara` branch deletion/force-push/PR ruleset described in [GEMARA_BRANCH_POLICY.md](company/GEMARA_BRANCH_POLICY.md). GitHub ruleset settings are not configured by the workflow.
+6. Use the [portable prompt runtime](prompt-system/README.md) to activate Lead, Orchestrator, Prompt Master and Product Presenter as needed.
+7. Confirm cold-start: a fresh agent can read Jira + the dedicated Git Gemara branch and continue without the original chat.
 
-## Distribution
-The pipeline validates the foundation and publishes a **source-only release artifact** from reviewed commits. It does **not** deploy infrastructure, provision Jira, install credentials, or assert that a company is operational.
+## Authority and architecture
+- `main`: product, prompts, configuration templates and validation pipeline.
+- `gemara`: **company-specific reasoning**, records, objections, correction lineage, WHY/WHY-NOT. Read/write on this branch, not on `main`.
+- Jira: operational commitments, dependencies, workflow and ownership.
+- Owner: intent and external authority.
+- Agents: replaceable intelligence with stable professions.
+
+The runtime is a **portable adaptation** of the COS philosophy, not a verbatim copy of COS V3.2 or the Confluence-backed Gemara vNext product.
+
+## Distribution pipeline
+[Validate and package](.github/workflows/validate-and-package.yml) checks source structure and creates a source artifact; [Bootstrap Git Gemara](.github/workflows/bootstrap-gemara.yml) creates the separate branch on demand. Neither provisions Jira nor applies GitHub repository rulesets.
 
 ## Security
-No secrets, personal data, customer records, real provider IDs, tokens, or internal repository history belong here. See [SECURITY.md](SECURITY.md). Do not commit .env files. A passing scanner is not a guarantee that content is safe to publish.
+Public source and Git history are visible to everyone. Review [SECURITY.md](SECURITY.md), enable secret scanning/push protection, and enforce rulesets on `main` and `gemara` in repository settings.
