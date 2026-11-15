@@ -1,0 +1,55 @@
+name: Bootstrap Git Gemara
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Create dedicated Gemara branch (idempotent)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, json, os, urllib.request, urllib.error
+          repo = os.environ["GH_REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          api = "https://api.github.com/repos/" + repo
+          headers = {"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json"}
+          def req(method, path, data=None):
+              body = None if data is None else json.dumps(data).encode()
+              request = urllib.request.Request(api+path, data=body, headers=headers, method=method)
+              try:
+                  with urllib.request.urlopen(request, timeout=20) as response:
+                      return response.status, json.load(response)
+              except urllib.error.HTTPError as e:
+                  if e.code == 404: return 404, {}
+                  raise RuntimeError(f"GitHub API {method} {path} returned HTTP {e.code}") from e
+          status, existing = req("GET", "/git/ref/heads/gemara")
+          if status == 200:
+              print("Gemara branch already exists; refusing to overwrite or mutate it.")
+              raise SystemExit(0)
+          _, main = req("GET", "/git/ref/heads/main")
+          sha = main["object"]["sha"]
+          req("POST", "/git/refs", {"ref": "refs/heads/gemara", "sha": sha})
+          files = {
+            "gemara/INDEX.md": "# Company Gemara\n\nNo company-specific reasoning records yet. Add records by reviewed pull requests.\n",
+            "gemara/PROTOCOL.md": "# Company Gemara Protocol\n\nRecover material reasoning, WHY, WHY-NOT, evidence, correction lineage and reopen conditions. Use reviewed Git commits and never invent authority.\n",
+            "gemara/records/.gitkeep": "",
+          }
+          for path, content in files.items():
+              _, current = req("GET", "/contents/" + path + "?ref=gemara")
+              payload = {"message": "Initialize Git Gemara: " + path, "content": base64.b64encode(content.encode()).decode(), "branch": "gemara"}
+              if current.get("sha"): payload["sha"] = current["sha"]
+              req("PUT", "/contents/" + path, payload)
+          print("Gemara branch initialized. Next: configure deletion/force-push/PR ruleset in Settings and verify.")
+          PY
