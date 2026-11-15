@@ -1,0 +1,51 @@
+name: Validate and package public template
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: template-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout reviewed tree
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Check structure and obvious secret patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in README.md FIRST_AGENT.md SECURITY.md company/OPERATING_MODEL.md company/JIRA_SETUP_GUIDE.md gemara/README.md gemara/PROTOCOL.md gemara/templates/REASONING_RECORD.md; do
+            test -s "$f" || { echo "::error::Missing or empty $f"; exit 1; }
+          done
+          if git ls-files | grep -Ei '(^|/)(\.env(\.|$)|id_rsa|id_ed25519)|\.(pem|p12|pfx|key)$'; then
+            echo "::error::Forbidden secret-like filename"; exit 1
+          fi
+          if grep -RInE --exclude-dir=.git --exclude='validate-and-package.yml' '(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' .; then
+            echo "::error::Potential credential detected"; exit 1
+          fi
+      - name: Create portable source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          tar --exclude=.git --exclude=dist -czf dist/company-template.tar.gz README.md FIRST_AGENT.md SECURITY.md .gitignore company gemara .github
+          sha256sum dist/company-template.tar.gz > dist/SHA256SUMS
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: company-template-${{ github.sha }}
+          path: dist/
+          retention-days: 7
