@@ -23,11 +23,11 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 1
-      - name: Check structure and obvious secret patterns
+      - name: Validate required foundation
         shell: bash
         run: |
           set -euo pipefail
-          for f in README.md FIRST_AGENT.md SECURITY.md company/OPERATING_MODEL.md company/JIRA_SETUP_GUIDE.md gemara/README.md gemara/PROTOCOL.md gemara/templates/REASONING_RECORD.md; do
+          for f in README.md FIRST_AGENT.md SECURITY.md company/OPERATING_MODEL.md company/JIRA_SETUP_GUIDE.md company/GEMARA_BRANCH_POLICY.md company/ENVIRONMENT.example.md gemara/README.md gemara/PROTOCOL.md gemara/templates/REASONING_RECORD.md prompt-system/README.md prompt-system/shared/WAKE_KERNEL.md prompt-system/shared/CONTINUOUS_DRIVE.md prompt-system/launchers/FIRST_AGENT.md prompt-system/roles/LEAD.md prompt-system/roles/ORCHESTRATOR.md prompt-system/roles/PROMPT_MASTER.md prompt-system/roles/PRODUCT_PRESENTER.md; do
             test -s "$f" || { echo "::error::Missing or empty $f"; exit 1; }
           done
           if git ls-files | grep -Ei '(^|/)(\.env(\.|$)|id_rsa|id_ed25519)|\.(pem|p12|pfx|key)$'; then
@@ -36,12 +36,19 @@ jobs:
           if grep -RInE --exclude-dir=.git --exclude='validate-and-package.yml' '(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' .; then
             echo "::error::Potential credential detected"; exit 1
           fi
+          python3 - <<'PY'
+          from pathlib import Path
+          assert "gemara" in Path("company/GEMARA_BRANCH_POLICY.md").read_text()
+          assert "Bootstrap Git Gemara" in Path(".github/workflows/bootstrap-gemara.yml").read_text()
+          assert "gemara" in Path("FIRST_AGENT.md").read_text()
+          print("Foundation contract checks passed")
+          PY
       - name: Create portable source package
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          tar --exclude=.git --exclude=dist -czf dist/company-template.tar.gz README.md FIRST_AGENT.md SECURITY.md .gitignore company gemara .github
+          tar --exclude=.git --exclude=dist -czf dist/company-template.tar.gz README.md FIRST_AGENT.md SECURITY.md .gitignore company gemara prompt-system .github
           sha256sum dist/company-template.tar.gz > dist/SHA256SUMS
       - name: Upload package
         uses: actions/upload-artifact@v4
